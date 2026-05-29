@@ -1,0 +1,17 @@
+langgraph
+langchain-anthropic
+anthropic
+langsmith
+streamlit
+pandas
+numpy
+plotly
+scipy
+statsmodels
+scikit-learn
+SQLAlchemy
+openpyxl
+jinja2
+weasyprint
+pydantic>=2.8
+python-dotenv
