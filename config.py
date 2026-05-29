@@ -29,7 +29,7 @@ LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")  # optional
 
 # ── Model identifiers ─────────────────────────────────────────────────────────
 MODEL_FAST: str = os.getenv("MODEL_FAST", "claude-haiku-4-5-20251001")
-MODEL_SMART: str = os.getenv("MODEL_SMART", "claude-sonnet-4-20250514")
+MODEL_SMART: str = os.getenv("MODEL_SMART", "claude-sonnet-4-6")
 
 # ── LangSmith tracing (opt-in) ────────────────────────────────────────────────
 LANGCHAIN_TRACING_V2: str = os.getenv("LANGCHAIN_TRACING_V2", "false")
