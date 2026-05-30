@@ -12,6 +12,5 @@ scikit-learn
 SQLAlchemy
 openpyxl
 jinja2
-weasyprint
 pydantic>=2.8
 python-dotenv
