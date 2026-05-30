@@ -125,6 +125,49 @@ justify-content:center;flex-shrink:0;margin-top:1px}
 .ft-sub{margin-top:4px;opacity:.7}"""
 
 
+# ── Chart rendering (binary-safe) ────────────────────────────────────────────
+
+import base64
+import numpy as np
+
+_BDATA_DTYPES: dict[str, type] = {
+    "f4": np.float32, "f8": np.float64,
+    "i1": np.int8,  "i2": np.int16,  "i4": np.int32,  "i8": np.int64,
+    "u1": np.uint8, "u2": np.uint16, "u4": np.uint32, "u8": np.uint64,
+}
+
+
+def _decode_bdata(obj: Any) -> Any:
+    """Recursively decode Plotly 5.x binary typed-array dicts to Python lists."""
+    if isinstance(obj, dict):
+        if "bdata" in obj and "dtype" in obj:
+            raw = base64.b64decode(obj["bdata"])
+            dtype = _BDATA_DTYPES.get(obj["dtype"], np.float64)
+            arr = np.frombuffer(raw, dtype=dtype)
+            return arr.tolist()
+        return {k: _decode_bdata(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_decode_bdata(v) for v in obj]
+    return obj
+
+
+def _chart_to_html(spec: "PlotlySpec", chart_index: int) -> str:
+    div_id = f"datastory-chart-{chart_index}"
+    fig = pio.from_json(spec.figure_json)
+    fig_dict = _decode_bdata(fig.to_dict())
+    clean_json = json.dumps(fig_dict, default=str)
+    return (
+        f'<div id="{div_id}" style="width:100%;height:420px;"></div>\n'
+        f'<script>\n'
+        f'  (function() {{\n'
+        f'    var fig = {clean_json};\n'
+        f'    Plotly.newPlot("{div_id}", fig.data, fig.layout,\n'
+        f'                   {{responsive: true, displayModeBar: false}});\n'
+        f'  }})();\n'
+        f'</script>'
+    )
+
+
 # ── HTML building blocks ──────────────────────────────────────────────────────
 
 def _e(text: Any) -> str:
@@ -278,15 +321,9 @@ def _render_charts(ctx: dict) -> str:
         )
 
     chart_divs = []
-    for spec in specs:
+    for i, spec in enumerate(specs):
         try:
-            fig = pio.from_json(spec.figure_json)
-            chart_inner = fig.to_html(
-                full_html=False,
-                include_plotlyjs=False,
-                config={"responsive": True, "displaylogo": False,
-                        "modeBarButtonsToRemove": ["lasso2d", "select2d"]},
-            )
+            chart_inner = _chart_to_html(spec, i)
             caption = (
                 f'<div class="cc">{_e(spec.insight)}</div>'
                 if spec.insight else ""
