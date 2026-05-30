@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import linregress
 
+import plotly.colors as pc
 import plotly.graph_objects as go
 
 from state.schema import DataStoryState, Insight, PlotlySpec, SchemaResult
@@ -37,9 +38,12 @@ from tools.data_loader import load_dataframe
 
 # ── Chart palette & layout ────────────────────────────────────────────────────
 
-_PALETTE = ["#3B82F6", "#F97316", "#10B981", "#8B5CF6", "#EF4444", "#F59E0B"]
+_PALETTE  = ["#3B82F6", "#F97316", "#10B981", "#8B5CF6", "#EF4444", "#F59E0B"]
 _PRIMARY  = _PALETTE[0]
 _ACCENT   = _PALETTE[1]
+
+# 12-colour qualitative palette for bar charts — cycles safely beyond 12 bars.
+_BAR_COLORS: list[str] = list(pc.qualitative.Set3)
 
 _BASE_LAYOUT = dict(
     template="plotly_white",
@@ -186,11 +190,13 @@ def _apply_layout(fig: go.Figure, title: str, x_label: str, y_label: str) -> Non
 
 
 def _make_line(df: pd.DataFrame, cfg: _ChartConfig) -> go.Figure:
-    df_s = df.sort_values(cfg.x_col)
+    # reset_index ensures a clean 0-based index after sort; .tolist() strips all
+    # pandas index/dtype metadata so Plotly uses the actual values, not the index.
+    df_s = df.sort_values(cfg.x_col).reset_index(drop=True)
     fig = go.Figure(
         go.Scatter(
-            x=df_s[cfg.x_col],
-            y=df_s[cfg.y_col],
+            x=df_s[cfg.x_col].tolist(),
+            y=df_s[cfg.y_col].tolist(),
             mode="lines+markers",
             name=_fmt_label(cfg.y_col),
             line=dict(color=_PRIMARY, width=2),
@@ -208,11 +214,15 @@ def _make_bar(df: pd.DataFrame, cfg: _ChartConfig) -> go.Figure:
         .reset_index()
         .sort_values(cfg.y_col, ascending=False)
     )
+    # Cycle _BAR_COLORS so every bar gets a distinct colour even when there
+    # are more categories than palette entries (_PALETTE only has 6 entries).
+    n = len(grouped)
+    bar_colors = [_BAR_COLORS[i % len(_BAR_COLORS)] for i in range(n)]
     fig = go.Figure(
         go.Bar(
             x=grouped[cfg.x_col].astype(str),
             y=grouped[cfg.y_col].round(2),
-            marker_color=_PALETTE[: len(grouped)],
+            marker_color=bar_colors,
             text=grouped[cfg.y_col].round(1),
             textposition="outside",
         )
